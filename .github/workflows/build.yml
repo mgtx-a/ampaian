@@ -1,0 +1,72 @@
+# Builds Ampaian.exe on GitHub's own machines from the public source.
+# Every push to main is built as a check; pushing a tag like v1.0.1 also publishes
+# a release with the exe, its SHA-256 and a build provenance attestation.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write       # create the release
+  id-token: write       # sign the attestation
+  attestations: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.0
+
+      - name: Build
+        env:
+          ZIG: zig
+        run: ./build.sh out
+
+      - name: Checksum
+        id: sum
+        run: echo "sha256=$(sha256sum out/Ampaian.exe | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ampaian
+          path: out/Ampaian.exe
+
+      - name: Attest build provenance
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: out/Ampaian.exe
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ steps.sum.outputs.sha256 }}
+        run: |
+          cat > notes.md <<EOF
+          **[Download Ampaian.exe](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Ampaian.exe)**, then run it. No installer and no runtime needed (Windows 10 / 11, 64-bit).
+
+          Built by GitHub Actions from commit ${GITHUB_SHA}. Verify with:
+          \`gh attestation verify Ampaian.exe --repo ${GITHUB_REPOSITORY}\`
+
+          SHA-256: \`${SHA}\`
+
+          Windows SmartScreen may warn that the app is unrecognised because the exe is not signed: choose **More info → Run anyway**.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/Ampaian.exe --clobber
+          else
+            gh release create "$TAG" out/Ampaian.exe --title "Ampaian ${TAG#v}" --notes-file notes.md --generate-notes
+          fi

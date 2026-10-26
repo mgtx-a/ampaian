@@ -2,7 +2,7 @@
 # Builds Ampaian (native) with the portable Zig toolchain on D:. Usage: ./build.sh [out-dir]
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ZIG=/d/native-build/toolchain/zig-x86_64-windows-0.17.0/zig.exe
+ZIG="${ZIG:-/d/native-build/toolchain/zig-x86_64-windows-0.17.0/zig.exe}"   # CI sets ZIG=zig
 OUT="${1:-/d/native-build/out}"
 mkdir -p "$OUT"
 cd "$HERE"
