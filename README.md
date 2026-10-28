@@ -5,7 +5,9 @@ as the C# version, but written in C++20 against plain Win32 + Direct2D. No runti
 
 ## Download
 **[Download Ampaian.exe](https://github.com/mgtx-a/ampaian/releases/latest/download/Ampaian.exe)** (latest version, Windows 10 / 11, 64-bit).
-No installer: just run it. Release notes and older versions are on the [Releases page](https://github.com/mgtx-a/ampaian/releases).
+No separate installer: run it, and the first time it asks whether to keep Ampaian on this PC. Choose **Yes** and it copies
+itself to your apps folder, adds itself to the Start menu and opens each time you sign in; you can then delete the download.
+Choose **No** to just run it from where it is (the tray menu offers to install it later). Release notes and older versions are on the [Releases page](https://github.com/mgtx-a/ampaian/releases).
 
 Windows SmartScreen may warn that the app is unrecognised because the exe is not signed: choose **More info → Run anyway**.
 
@@ -17,7 +19,8 @@ Everything it touches stays on your PC:
 - **Your Screenshots folder:** watched for new pictures (Win+PrtSc).
 - **`%LOCALAPPDATA%\Ampaian\Screenshots`:** screenshots that only came from the clipboard are saved here so they can hang on the line.
 - **`%APPDATA%\Ampaian`:** `settings.json` and a small `log.txt` (kept under 200 KB) for troubleshooting.
-- **Registry:** one value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, only when you tick "Open at login" (untick it to remove it).
+- **`%LOCALAPPDATA%\Programs\Ampaian`** and a Start menu shortcut: only when you choose to install it. **Uninstall Ampaian...** in the tray menu removes both (your screenshots and settings are kept).
+- **Registry:** one value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, only when you install it or tick "Open at login" (untick it to remove it).
 - **Hotkey:** Ctrl+Alt+T, to show and hide the line.
 
 Files are only moved, saved to the Desktop or sent to the Recycle Bin when you choose that from a photo's menu.

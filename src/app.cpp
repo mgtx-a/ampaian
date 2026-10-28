@@ -6,6 +6,7 @@
 #include "flight.h"
 #include "gfx.h"
 #include "guide.h"
+#include "install.h"
 #include "layout.h"
 #include "markup.h"
 #include "model.h"
@@ -34,6 +35,7 @@ constexpr double OtherSourceWindow = 8;  // the same capture from the clipboard 
 constexpr double SameSourceWindow = 2;
 
 HWND g_msg = nullptr;
+wstring g_relaunch;   // the installed exe to start once this copy has quit
 std::mutex g_uiMutex;
 std::vector<std::function<void()>> g_uiQueue;
 int g_modalDepth = 0;
@@ -746,30 +748,6 @@ struct App {
 
     // ------------------------------------------------------------ tray and menus
 
-    static bool AutoStartOn()
-    {
-        HKEY k;
-        if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_READ, &k) != ERROR_SUCCESS) return false;
-        bool on = RegQueryValueExW(k, L"Ampaian", nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS;
-        RegCloseKey(k);
-        return on;
-    }
-
-    static void ToggleAutoStart()
-    {
-        HKEY k;
-        if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_READ | KEY_WRITE, &k) != ERROR_SUCCESS) return;
-        if (AutoStartOn()) {
-            RegDeleteValueW(k, L"Ampaian");
-        } else {
-            wchar_t exe[MAX_PATH * 2];
-            GetModuleFileNameW(nullptr, exe, MAX_PATH * 2);
-            wstring v = wstring(L"\"") + exe + L"\"";
-            RegSetValueExW(k, L"Ampaian", 0, REG_SZ, reinterpret_cast<const BYTE*>(v.c_str()), DWORD((v.size() + 1) * sizeof(wchar_t)));
-        }
-        RegCloseKey(k);
-    }
-
     void SetUpTray()
     {
         nid.cbSize = sizeof nid;
@@ -796,6 +774,7 @@ struct App {
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
         AppendMenuW(m, MF_STRING | (settings.cornerFree ? MF_CHECKED : 0), 9, L"Keep top-right corner free");
         AppendMenuW(m, MF_STRING, 8, L"Take the tour");
+        AppendMenuW(m, MF_STRING, 10, RunningInstalled() ? L"Uninstall Ampaian..." : L"Install on this PC...");
         AppendMenuW(m, MF_STRING, 7, L"Quit Ampaian");
         POINT p = CursorPos();
         BeginModal();
@@ -809,10 +788,13 @@ struct App {
             case 3: settings.clipboardOff = !settings.clipboardOff; settings.Save(); break;
             case 4: ShellExecuteW(nullptr, L"open", watcher.folder.c_str(), nullptr, nullptr, SW_SHOWNORMAL); break;
             case 5: settings.soundOff = !settings.soundOff; settings.Save(); break;
-            case 6: ToggleAutoStart(); break;
+            case 6: SetAutoStart(!AutoStartOn()); break;
             case 7: PostQuitMessage(0); break;
             case 8: BeginTour(); break;
             case 9: settings.cornerFree = !settings.cornerFree; settings.Save(); break;
+            case 10:
+                if (RunningInstalled() ? Uninstall() : !(g_relaunch = Install()).empty()) PostQuitMessage(0);
+                break;
         }
     }
 
@@ -962,20 +944,28 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE, LPSTR, int)
 
     OleInitialize(nullptr);   // apartment-threaded COM, and drag and drop
     if (!GfxInit()) { MessageBoxW(nullptr, L"Ampaian could not start its graphics.", L"Ampaian", MB_ICONERROR); return 1; }
+    g_relaunch = OfferInstall();
+    int rc = 0;
+    if (g_relaunch.empty()) {
+        WNDCLASSW wc{};
+        wc.lpfnWndProc = MsgProc;
+        wc.hInstance = inst;
+        wc.lpszClassName = L"AmpaianMessages";
+        RegisterClassW(&wc);
+        g_msg = CreateWindowExW(0, wc.lpszClassName, L"Ampaian", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, inst, nullptr);
 
-    WNDCLASSW wc{};
-    wc.lpfnWndProc = MsgProc;
-    wc.hInstance = inst;
-    wc.lpszClassName = L"AmpaianMessages";
-    RegisterClassW(&wc);
-    g_msg = CreateWindowExW(0, wc.lpszClassName, L"Ampaian", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, inst, nullptr);
-
-    App app;
-    g_app = &app;
-    app.Start(inst);
-    int rc = app.Run();
-    app.Shutdown();
-    g_app = nullptr;
+        App app;
+        g_app = &app;
+        app.Start(inst);
+        rc = app.Run();
+        app.Shutdown();
+        g_app = nullptr;
+    }
     OleUninitialize();
+    // The single-instance lock is let go first, or the installed copy would see this one and quit.
+    if (!g_relaunch.empty()) {
+        CloseHandle(mutex);
+        ShellExecuteW(nullptr, L"open", g_relaunch.c_str(), nullptr, ParentDir(g_relaunch).c_str(), SW_SHOWNORMAL);
+    }
     return rc;
 }

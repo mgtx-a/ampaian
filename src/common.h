@@ -89,6 +89,7 @@ wstring DataDir();                              // %APPDATA%\Ampaian (or AMPAIAN
 wstring InboxDir();                             // where clipboard-only captures are kept
 wstring WatchDir();                             // the Screenshots folder (or AMPAIAN_WATCH)
 double Scale();                                 // system DPI / 96
+wstring KnownFolder(REFKNOWNFOLDERID id);        // empty when Windows has none
 
 // ---- monitors
 struct Mon {
@@ -104,6 +105,7 @@ Mon UnderPointer();
 struct Settings {
     std::vector<wstring> paths;
     bool soundOff = false, clipboardOff = false, welcomed = false;
+    bool installAsked = false;   // the downloaded exe offered to install itself
     bool cornerFree = true;   // the top-right corner (window buttons) does not bring the line down
     static Settings Load();
     void Save() const;
