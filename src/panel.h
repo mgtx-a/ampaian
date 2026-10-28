@@ -28,6 +28,7 @@ public:
     void PlaceOnScreen(const Mon& mon);
     const Mon& screen() const { return mon_; }
     RECT pixelFrame() const { return frame_; }       // the window, in screen pixels
+    RECT photosFrame() const;                        // where the photos hang, up to the top of the screen
     double widthDip() const { return widthDip_; }
 
     void Show(bool on);
@@ -85,7 +86,7 @@ private:
     Mon mon_{};
     RECT frame_{};
     double widthDip_ = 0;
-    bool shown_ = false, dirty_ = true, clickThrough_ = true;
+    bool shown_ = false, dirty_ = true, clickThrough_ = true, revealed_ = false;
     Anim slide_, hintOpacity_;
     std::vector<std::unique_ptr<Card>> cards_;
 

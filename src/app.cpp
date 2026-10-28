@@ -29,9 +29,9 @@ constexpr int HOTKEY_ID = 1;
 
 constexpr double RevealDelay = 0.25;     // how long the pointer rests on the top edge
 constexpr double RetractDelay = 0.5;     // how long it is away before the line tucks up
-constexpr double CornerWidth = 200;      // top-right corner kept free for the window buttons, in points
-constexpr double TopBand = 8;            // the hot strip along the top edge, in points
-constexpr double OpenTopBand = 24;       // the same, where another screen sits right above and the pointer slips across
+constexpr double CornerWidth = 200;      // top corners kept free for window buttons, menus and tabs, in points
+constexpr double TopBand = 3;            // the hot strip along the top edge, in points: pushing against the edge
+constexpr double OpenTopBand = 12;       // the same, where another screen sits right above and the pointer slips across
 constexpr double OtherSourceWindow = 8;  // the same capture from the clipboard and from a file
 constexpr double SameSourceWindow = 2;
 
@@ -518,8 +518,9 @@ struct App {
         }
         double band = openAbove ? OpenTopBand : TopBand;
         bool atTopEdge = under && mouse.y < under->bounds.top + LONG(std::lround(band * Scale()));
-        // Minimise / maximise / close live in the top-right corner: reaching for them must not drop the line.
-        if (atTopEdge && settings.cornerFree && mouse.x >= under->bounds.right - LONG(std::lround(CornerWidth * Scale()))) atTopEdge = false;
+        // Window buttons (top right), menus and tabs (top left) live in the corners: reaching for them must not drop the line.
+        LONG corner = LONG(std::lround(CornerWidth * Scale()));
+        if (atTopEdge && settings.cornerFree && (mouse.x >= under->bounds.right - corner || mouse.x < under->bounds.left + corner)) atTopEdge = false;
         bool buttonDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
 
         if (!isRevealed) {
@@ -544,9 +545,9 @@ struct App {
             return;
         }
 
-        // The line's zone runs from its lowest point up to the top of the screen, so moving up never hides it.
-        RECT f = panel.pixelFrame();
-        RECT zone{ f.left, panel.screen().bounds.top, f.right, f.bottom };
+        // The line's zone is where the photos hang, up to the top of the screen, so moving up never hides it;
+        // heading anywhere else along the top tucks it away.
+        RECT zone = panel.photosFrame();
         bool inside = PtInRect(&zone, mouse) != 0;
         if (inside && pinned) pinned = false;
 
@@ -783,7 +784,7 @@ struct App {
         AppendMenuW(m, MF_STRING | (line.SoundOn() ? MF_CHECKED : 0), 5, L"Sounds");
         AppendMenuW(m, MF_STRING | (AutoStartOn() ? MF_CHECKED : 0), 6, L"Open at login");
         AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(m, MF_STRING | (settings.cornerFree ? MF_CHECKED : 0), 9, L"Keep top-right corner free");
+        AppendMenuW(m, MF_STRING | (settings.cornerFree ? MF_CHECKED : 0), 9, L"Keep top corners free");
         AppendMenuW(m, MF_STRING, 8, L"Take the tour");
         AppendMenuW(m, MF_STRING, 10, RunningInstalled() ? L"Uninstall Ampaian..." : L"Install on this PC...");
         AppendMenuW(m, MF_STRING, 7, L"Quit Ampaian");
