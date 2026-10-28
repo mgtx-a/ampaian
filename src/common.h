@@ -106,7 +106,7 @@ struct Settings {
     std::vector<wstring> paths;
     bool soundOff = false, clipboardOff = false, welcomed = false;
     bool installAsked = false;   // the downloaded exe offered to install itself
-    bool cornerFree = true;   // the top-right corner (window buttons) does not bring the line down
+    bool cornerFree = true;   // the top corners (window buttons, menus, tabs) do not bring the line down
     static Settings Load();
     void Save() const;
 };

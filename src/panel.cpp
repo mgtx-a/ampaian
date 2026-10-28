@@ -154,6 +154,7 @@ void Panel::SetRevealed(bool on)
 {
     // Tucked away, the whole line waits above the top edge and slides out from
     // under it, the way an auto-hiding taskbar does.
+    revealed_ = on;
     if (on) {
         EnsureOnTop();
         slide_.Spring(0, 0.42, 0.82);
@@ -496,6 +497,19 @@ void Panel::Hover(Card* target)
     dirty_ = true;
 }
 
+RECT Panel::photosFrame() const
+{
+    double lo = 1e9, hi = -1e9;
+    for (auto& c : cards_) {
+        if (!c->item || c->falling) continue;
+        lo = std::min(lo, c->X.value);
+        hi = std::max(hi, c->X.value);
+    }
+    if (lo > hi) return { frame_.left, mon_.bounds.top, frame_.right, frame_.bottom };
+    double s = Scale(), pad = L::CardWidth / 2 + 24;
+    return { frame_.left + LONG(std::lround((lo - pad) * s)), mon_.bounds.top, frame_.left + LONG(std::lround((hi + pad) * s)), frame_.bottom };
+}
+
 void Panel::UpdateHover()
 {
     if (!shown_ || GrabDragging()) return;
@@ -503,8 +517,10 @@ void Panel::UpdateHover()
     double s = Scale();
     bool inside = p.x >= frame_.left && p.x < frame_.right && p.y >= frame_.top && p.y < frame_.bottom;
     Card* hit = nullptr;
-    if (inside && !clickThrough_) hit = HitCard((p.x - frame_.left) / s, (p.y - frame_.top) / s, nullptr, nullptr);
+    if (inside && revealed_) hit = HitCard((p.x - frame_.left) / s, (p.y - frame_.top) / s, nullptr, nullptr);
     Hover(hit);
+    // Only the photos take clicks: the space around and between them belongs to the windows underneath.
+    if (revealed_ && !line_.pressedId && !line_.menuOpen) SetClickThrough(!hit);
 }
 
 void Panel::SetPressed(Card* c, bool on)
