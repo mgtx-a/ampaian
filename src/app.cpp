@@ -273,6 +273,7 @@ struct App {
     int lastLiveCount = 0;
     std::optional<Mon> pendingScreen;
     bool tracking = false;
+    LONG openedAtX = LONG_MIN;   // where the pointer brought the line down, if it did
     double nextTick = 0, nextFrame = 0, lastFrame = 0;
     std::vector<Mon> monCache;
     double monCacheAt = -1e9;
@@ -464,6 +465,7 @@ struct App {
         panel.SetRevealed(on);
         panel.SetClickThrough(!on);
         if (!on) {
+            openedAtX = LONG_MIN;
             pinned = false;
             userOpened = false;
             peekUntil = 0;
@@ -538,6 +540,7 @@ struct App {
                     }
                     Refresh();
                     Reveal();
+                    openedAtX = mouse.x;
                 }
             } else if (now - lastInBand > 0.15) {
                 hotZoneSince = -1;   // a hand is never perfectly still: a short slip does not start the wait over
@@ -546,8 +549,14 @@ struct App {
         }
 
         // The line's zone is where the photos hang, up to the top of the screen, so moving up never hides it;
-        // heading anywhere else along the top tucks it away.
+        // heading anywhere else along the top tucks it away. Where the pointer opened it counts too, or a
+        // pointer resting on the edge away from the photos would bring it down and up again and again.
         RECT zone = panel.photosFrame();
+        if (openedAtX != LONG_MIN) {
+            LONG pad = LONG(std::lround(40 * Scale()));
+            zone.left = std::min(zone.left, openedAtX - pad);
+            zone.right = std::max(zone.right, openedAtX + pad);
+        }
         bool inside = PtInRect(&zone, mouse) != 0;
         if (inside && pinned) pinned = false;
 
