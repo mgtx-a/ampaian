@@ -117,7 +117,7 @@ wstring EnvVar(const wchar_t* name)
 bool TestMode() { static bool on = !EnvVar(L"AMPAIAN_DATA").empty(); return on; }
 bool NoTray() { static bool on = EnvVar(L"AMPAIAN_NOTRAY") == L"1"; return on; }
 
-static wstring KnownFolder(REFKNOWNFOLDERID id)
+wstring KnownFolder(REFKNOWNFOLDERID id)
 {
     PWSTR p = nullptr;
     wstring r;
@@ -300,6 +300,7 @@ void Settings::Save() const
     j += ",\"ClipboardOff\":";   j += clipboardOff ? "true" : "false";
     j += ",\"CornerFree\":";   j += cornerFree ? "true" : "false";
     j += ",\"Welcomed\":";       j += welcomed ? "true" : "false";
+    j += ",\"InstallAsked\":";   j += installAsked ? "true" : "false";
     j += "}";
     EnsureDir(DataDir());
     WriteAllBytes(JoinPath(DataDir(), L"settings.json"), j.data(), j.size());
@@ -327,6 +328,7 @@ Settings Settings::Load()
     s.clipboardOff = ParseBool(j, "ClipboardOff", false);
     s.cornerFree = ParseBool(j, "CornerFree", true);
     s.welcomed = ParseBool(j, "Welcomed", false);
+    s.installAsked = ParseBool(j, "InstallAsked", false);
 
     size_t k = j.find("\"Paths\"");
     if (k == std::string::npos) return s;
