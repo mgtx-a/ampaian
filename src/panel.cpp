@@ -129,6 +129,18 @@ void Panel::Show(bool on)
     }
 }
 
+void Panel::EnsureOnTop()
+{
+    // Windows 11 minimises windows when a monitor is unplugged, and other topmost windows can
+    // end up above the line: either way it would slide down unseen, so it is brought back first.
+    if (!hwnd_ || !shown_) return;
+    if (IsIconic(hwnd_) || !IsWindowVisible(hwnd_)) {
+        ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
+        dirty_ = true;
+    }
+    SetWindowPos(hwnd_, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+}
+
 void Panel::SetClickThrough(bool on)
 {
     if (!hwnd_ || on == clickThrough_) return;
@@ -143,9 +155,8 @@ void Panel::SetRevealed(bool on)
     // Tucked away, the whole line waits above the top edge and slides out from
     // under it, the way an auto-hiding taskbar does.
     if (on) {
+        EnsureOnTop();
         slide_.Spring(0, 0.42, 0.82);
-        // Overlays such as a screenshot tool's can end up above the line: take the top again.
-        if (shown_) SetWindowPos(hwnd_, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
     else slide_.Ease(-(L::PanelHeight + 12), 0.22, Curve::EaseIn);
     dirty_ = true;

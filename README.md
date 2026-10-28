@@ -40,3 +40,7 @@ Each release also lists the exe's SHA-256 checksum (`Get-FileHash Ampaian.exe` i
 Needs a C++20 MinGW-style toolchain; the script uses Zig:
 
     ./build.sh [outdir]
+
+Or with Visual Studio 2019+ (the "Desktop development with C++" workload); the exe lands next to the script by default:
+
+    build-msvc.bat [outdir]

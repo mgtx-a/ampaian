@@ -32,6 +32,7 @@ public:
 
     void Show(bool on);
     bool shown() const { return shown_; }
+    void EnsureOnTop();
     void SetClickThrough(bool on);
     void SetRevealed(bool on);
     bool slidFullyUp() const { return slide_.value <= -(L::PanelHeight + 11); }
