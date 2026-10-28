@@ -30,6 +30,7 @@ constexpr double RevealDelay = 0.25;     // how long the pointer rests on the to
 constexpr double RetractDelay = 0.5;     // how long it is away before the line tucks up
 constexpr double CornerWidth = 200;      // top-right corner kept free for the window buttons, in points
 constexpr double TopBand = 8;            // the hot strip along the top edge, in points
+constexpr double OpenTopBand = 24;       // the same, where another screen sits right above and the pointer slips across
 constexpr double OtherSourceWindow = 8;  // the same capture from the clipboard and from a file
 constexpr double SameSourceWindow = 2;
 
@@ -503,8 +504,18 @@ struct App {
         }
         const auto& screens = CachedScreens(now);
         const Mon* under = MonitorAt(screens, mouse);
-        // Windows has no menu bar: the hot strip is the top edge of the screen.
-        bool atTopEdge = under && mouse.y < under->bounds.top + LONG(std::lround(TopBand * Scale()));
+        // Windows has no menu bar: the hot strip is the top edge of the screen. With another screen
+        // right above, there is no edge to push against, so the strip is taller; crossing it on the
+        // way up is quicker than the wait, so it does not open the line by accident.
+        bool openAbove = false;
+        if (under) {
+            for (auto& m : screens) {
+                if (m.handle != under->handle && std::abs(m.bounds.bottom - under->bounds.top) <= 2 && mouse.x >= m.bounds.left && mouse.x < m.bounds.right)
+                    openAbove = true;
+            }
+        }
+        double band = openAbove ? OpenTopBand : TopBand;
+        bool atTopEdge = under && mouse.y < under->bounds.top + LONG(std::lround(band * Scale()));
         // Minimise / maximise / close live in the top-right corner: reaching for them must not drop the line.
         if (atTopEdge && settings.cornerFree && mouse.x >= under->bounds.right - LONG(std::lround(CornerWidth * Scale()))) atTopEdge = false;
         bool buttonDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
@@ -921,6 +932,8 @@ LRESULT CALLBACK MsgProc(HWND h, UINT m, WPARAM w, LPARAM l)
                 g_app->monCacheAt = -1e9;
                 g_app->panel.PlaceOnScreen(UnderPointer());
                 g_app->UpdateCapacity();
+                // Windows 11 may minimise the line when a monitor goes away; it settles a moment later.
+                After(1.0, [] { if (g_app) g_app->panel.EnsureOnTop(); });
             }
             return 0;
         case WM_DESTROY:
